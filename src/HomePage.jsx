@@ -1,62 +1,68 @@
-import { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-  
+import { useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function HomePage() {
-  const [recipient, setRecipient] = useState('');
-  const [message, setMessage] = useState('');
+  const [recipient, setRecipient] = useState("");
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
-  const username = localStorage.getItem('username');
+  const username = localStorage.getItem("username");
   const navigate = useNavigate();
 
-  // With this environment variable version:
-const socket = io(import.meta.env.VITE_API_URL, {
-  withCredentials: true, // Add this for CORS
-  maxHttpBufferSize: 1e8
-});
-
+  // Move socket initialization inside the component
+  const socket = useRef(null);
 
   useEffect(() => {
     if (!username) {
       navigate('/');
+      return;
     }
-
-    // Register user with Socket.IO
-    socket.emit('register', username);
-
-    // Listen for incoming messages
-    socket.on('receiveMessage', ({ sender, message, file }) => {
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { sender, message, file },
-      ]);
+  
+    // Initialize socket connection
+    socket.current = io(import.meta.env.VITE_API_URL, {
+      withCredentials: true,
+      maxHttpBufferSize: 1e8,
+      transports: ['websocket', 'polling']
     });
-
+  
+    // Register user
+    socket.current.emit('register', username);
+  
+    // Message listener
+    const messageHandler = ({ sender, message, file }) => {
+      setMessages(prev => [...prev, { sender, message, file }]);
+    };
+    socket.current.on('receiveMessage', messageHandler);
+  
     // Cleanup
     return () => {
-      socket.off('receiveMessage');
+      if (socket.current) {
+        socket.current.off('receiveMessage', messageHandler);
+        socket.current.disconnect();
+      }
     };
   }, [username, navigate]);
 
   const handleSendMessage = async () => {
     if (!recipient || (!message && !fileInputRef.current?.files[0])) {
-      setError('Please enter a recipient and a message or file.');
+      setError("Please enter a recipient and a message or file.");
       return;
     }
 
     // Check if recipient exists
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/check-recipient`, {
-        username: recipient,
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/check-recipient`,
+        {
+          username: recipient,
+        }
+      );
 
       if (!response.data.exists) {
-        setError('Recipient not found. Please check the username.');
+        setError("Recipient not found. Please check the username.");
         return;
       }
 
@@ -73,7 +79,7 @@ const socket = io(import.meta.env.VITE_API_URL, {
           };
 
           // Emit message to the backend
-          socket.emit('sendMessage', {
+          socket.current.emit("sendMessage", {
             sender: username,
             receiver: recipient,
             message,
@@ -87,14 +93,14 @@ const socket = io(import.meta.env.VITE_API_URL, {
           ]);
 
           // Clear inputs and error
-          setMessage('');
-          fileInputRef.current.value = '';
-          setError('');
+          setMessage("");
+          fileInputRef.current.value = "";
+          setError("");
         };
         reader.readAsDataURL(fileObj);
       } else {
         // Emit text message
-        socket.emit('sendMessage', {
+        socket.emit("sendMessage", {
           sender: username,
           receiver: recipient,
           message,
@@ -107,24 +113,24 @@ const socket = io(import.meta.env.VITE_API_URL, {
         ]);
 
         // Clear inputs and error
-        setMessage('');
-        setError('');
+        setMessage("");
+        setError("");
       }
     } catch (err) {
-      setError('Error sending message. Please try again.');
+      setError("Error sending message. Please try again.");
       console.error(err);
     }
   };
 
   const handleLogout = () => {
     // Clear localStorage
-    localStorage.removeItem('username');
+    localStorage.removeItem("username");
 
     // Disconnect from Socket.IO
     socket.disconnect();
 
     // Redirect to login page
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -189,14 +195,14 @@ const socket = io(import.meta.env.VITE_API_URL, {
             <div
               key={index}
               className={`mb-2 p-2 rounded ${
-                msg.sender === username ? 'bg-blue-100' : 'bg-gray-100'
+                msg.sender === username ? "bg-blue-100" : "bg-gray-100"
               }`}
             >
               <strong>{msg.sender}: </strong>
               <span>{msg.message}</span>
               {msg.file && (
                 <div className="mt-2">
-                  {msg.file.type.startsWith('image/') ? (
+                  {msg.file.type.startsWith("image/") ? (
                     <img
                       src={msg.file.data}
                       alt="Shared file"
@@ -219,4 +225,4 @@ const socket = io(import.meta.env.VITE_API_URL, {
       </div>
     </div>
   );
-} 
+}
