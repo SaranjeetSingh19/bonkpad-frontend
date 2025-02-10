@@ -127,7 +127,7 @@ export default function HomePage() {
     localStorage.removeItem("username");
 
     // Disconnect from Socket.IO
-    socket.disconnect();
+    socket.current.disconnect();
 
     // Redirect to login page
     navigate("/");
