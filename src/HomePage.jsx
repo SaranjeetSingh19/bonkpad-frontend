@@ -100,7 +100,7 @@ export default function HomePage() {
         reader.readAsDataURL(fileObj);
       } else {
         // Emit text message
-        socket.emit("sendMessage", {
+        socket.current.emit("sendMessage", {
           sender: username,
           receiver: recipient,
           message,
