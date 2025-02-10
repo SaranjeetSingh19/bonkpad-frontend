@@ -3,9 +3,7 @@ import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const socket = io('https://bonkpad-backend.onrender.com/', {
-  maxHttpBufferSize: 1e8, // Allow larger files (100MB)
-});
+  
 
 export default function HomePage() {
   const [recipient, setRecipient] = useState('');
@@ -15,6 +13,13 @@ export default function HomePage() {
   const fileInputRef = useRef(null);
   const username = localStorage.getItem('username');
   const navigate = useNavigate();
+
+  // With this environment variable version:
+const socket = io(import.meta.env.VITE_API_URL, {
+  withCredentials: true, // Add this for CORS
+  maxHttpBufferSize: 1e8
+});
+
 
   useEffect(() => {
     if (!username) {
@@ -46,7 +51,7 @@ export default function HomePage() {
 
     // Check if recipient exists
     try {
-      const response = await axios.post(import.meta.env.VITE_API_URL, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/check-recipient`, {
         username: recipient,
       });
 

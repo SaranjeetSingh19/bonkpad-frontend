@@ -6,11 +6,12 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(import.meta.env.VITE_API_URL, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/check-username`, {
         username: username.toLowerCase().trim(),
       });
 
